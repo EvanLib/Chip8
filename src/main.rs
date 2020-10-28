@@ -1,14 +1,23 @@
 struct CPU {
+    // 16 8bit registers 
     registers: [u8; 16],
-    posistion_in_memory: usize,
+
+    // Program Counter
+    program_counter: usize,
+
+    // 4 kB (4096) bytes of RAM
     memory: [u8; 4096],
+
+    // 16 16-bit values
     stack: [u16; 16],
+
+    // stack ptr
     stack_pointer: usize,
 }
 
 impl CPU {
     fn read_operation(&self) -> u16 {
-        let p = self.posistion_in_memory;
+        let p = self.program_counter;
         let op_byte1 = self.memory[p] as u16;
         let op_byte2 = self.memory[p + 1] as u16;
 
@@ -16,10 +25,30 @@ impl CPU {
         op_byte1 << 8 | op_byte2
     }
 
+    fn run_operation(&mut self, opcode: u16) {
+        self.program_counter += 2;
+        let c = ((opcode & 0xF000) >> 12) as u8;
+        let x = ((opcode & 0x0F00) >> 8) as u8;
+        let y = ((opcode & 0x00F0) >> 4) as u8;
+        let d = ((opcode & 0x000F) >> 0) as u8;
+
+        let nnn = opcode & 0x0FFF;
+        match (c, x, y, d) {
+            (0, 0, 0, 0) => return,
+            (0, 0, 0xE, 0xE) => self.ret(),
+            (0x1, _, _, _) => self.jump(nnn),
+            (0x2, _, _, _) => self.call(nnn),
+            (0x8, _, _, 0x4) => self.add_xy(x, y),
+            _ => todo!("opcode {:04x}", opcode),
+        }
+    }
+               
+    
+
     fn run(&mut self) {
         loop {
             let opcode = self.read_operation();
-            self.posistion_in_memory += 2;
+            self.program_counter += 2;
             let c = ((opcode & 0xF000) >> 12) as u8;
             let x = ((opcode & 0x0F00) >> 8) as u8;
             let y = ((opcode & 0x00F0) >> 4) as u8;
@@ -29,6 +58,7 @@ impl CPU {
             match (c, x, y, d) {
                 (0, 0, 0, 0) => return,
                 (0, 0, 0xE, 0xE) => self.ret(),
+                (0x1, _, _, _) => self.jump(nnn),
                 (0x2, _, _, _) => self.call(nnn),
                 (0x8, _, _, 0x4) => self.add_xy(x, y),
                 _ => todo!("opcode {:04x}", opcode),
@@ -58,9 +88,9 @@ impl CPU {
             panic!("Stack overflow")
         }
 
-        stack[sp] = self.posistion_in_memory as u16;
+        stack[sp] = self.program_counter as u16;
         self.stack_pointer += 1;
-        self.posistion_in_memory = addr as usize;
+        self.program_counter = addr as usize;
     }
 
     fn ret(&mut self) {
@@ -69,7 +99,12 @@ impl CPU {
         }
 
         self.stack_pointer -= 1;
-        self.posistion_in_memory = self.stack[self.stack_pointer] as usize;
+        self.program_counter = self.stack[self.stack_pointer] as usize;
+    }
+
+    fn jump(&mut self, addr: u16) {
+        // set program_counter to addr
+        self.program_counter = addr as usize;
     }
 }
 
@@ -77,7 +112,7 @@ fn main() {
     let mut cpu = CPU {
         registers: [0; 16],
         memory: [0; 4096],
-        posistion_in_memory: 0,
+        program_counter: 0,
         stack: [0; 16],
         stack_pointer: 0,
     };
@@ -102,3 +137,7 @@ fn main() {
 
     println!("5 + (10 * 2) + (10 * 2) = {}", cpu.registers[0]);
 }
+
+#[cfg(test)]
+#[path = "./processor_test.rs"]
+mod processor_test;
