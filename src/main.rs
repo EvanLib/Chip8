@@ -1,6 +1,13 @@
+use rand;
+use rand::Rng;
+
 struct CPU {
     // 16 8bit registers
     registers: [u8; 16],
+
+    // special I register
+    // (TODO) Factor out registers and register I
+    regi: u16,
 
     // Program Counter
     program_counter: usize,
@@ -52,7 +59,11 @@ impl CPU {
             (0x8, _, _, 0x5) => self.op_8xy5(x, y),
             (0x8, _, _, 0x6) => self.op_8xy6(x, y),
             (0x8, _, _, 0x7) => self.op_8xy7(x, y),
-            (0x8, _, _, 0xE) => self.op_8xyE(x, y),
+            (0x8, _, _, 0xE) => self.op_8xye(x, y),
+            (0x9, _, _, 0) => self.op_9xy0(x, y),
+            (0xA, _, _, _) => self.op_annn(nnn),
+            (0xB, _, _, _) => self.op_bnnn(nnn),
+            (0xC, _, _, _) => self.op_cxnn(x, nn),
             _ => todo!("opcode {:04x}", opcode),
         }
     }
@@ -211,13 +222,42 @@ impl CPU {
 
     /// Store the value of register VY shifted left one bit in register VX
     /// Set register VF to the most significant bit prior to the shift
-    fn op_8xyE(&mut self, x: u8, y: u8) {
+    fn op_8xye(&mut self, x: u8, y: u8) {
         // shift one bit
         let arg2: u8 = self.registers[y as usize];
         self.registers[x as usize] = arg2 << 1;
 
         // set register VF to most significan bit prioir to the shift.
         self.registers[0x0F] = (self.registers[y as usize] & 0b10000000) >> 7;
+    }
+
+    /// Skip the following instruction if the value of register VX is not equal to the value of register VY
+    fn op_9xy0(&mut self, x: u8, y: u8) {
+        let vx = self.registers[x as usize];
+        let vy = self.registers[y as usize];
+
+        if vx != vy {
+            self.program_counter += 2;
+        }
+    }
+
+    /// Store memory address NNN in register I
+    fn op_annn(&mut self, nnn: u16) {
+        self.regi = nnn;
+    }
+
+    /// Jump to address NNN + V0
+    fn op_bnnn(&mut self, nnn: u16) {
+        let v0 = self.registers[0];
+        let jump = v0 as u16 + nnn;
+        self.program_counter = jump as usize;
+    }
+
+    /// (TODO) Refactor Number Gen
+    /// Set VX to a random number with a mask of NN
+    fn op_cxnn(&mut self, x: u8, nn: u8) {
+        let mut rng = rand::thread_rng();
+        self.registers[x as usize] = rng.gen::<u8>() & nn;
     }
 }
 
@@ -228,6 +268,7 @@ fn main() {
         program_counter: 0,
         stack: [0; 16],
         stack_pointer: 0,
+        regi: 0,
     };
 
     cpu.registers[0] = 5;

@@ -7,6 +7,7 @@ fn build_cpu() -> CPU {
         program_counter: 0,
         stack: [0; 16],
         stack_pointer: 0,
+        regi: 0,
     };
     cpu
 }
@@ -208,7 +209,6 @@ fn test_8xy6() {
     assert_eq!(cpu.registers[0x000f], 1);
 }
 
-
 #[test]
 fn test_8xy7() {
     // should set register value
@@ -250,4 +250,36 @@ fn test_8xye() {
     cpu.run_operation(0x812E);
     assert_eq!(cpu.registers[0x0001], testval);
     assert_eq!(cpu.registers[0x000F], 1);
+}
+
+#[test]
+fn test_9xy0() {
+    // vx != vy skip
+    let mut cpu = build_cpu();
+    cpu.registers[0x0001 as usize] = 1;
+    cpu.registers[0x0002 as usize] = 2;
+
+    cpu.run_operation(0x9120);
+
+    assert_eq!(cpu.program_counter, 4);
+}
+
+#[test]
+fn test_annn() {
+    let mut cpu = build_cpu();
+    let testval: u16 = 145;
+
+    cpu.run_operation(0xA091);
+
+    assert_eq!(cpu.regi, testval);
+}
+
+#[test]
+fn test_bnnn() {
+    let mut cpu = build_cpu();
+    let testval: usize = 145;
+    cpu.registers[0] = 100;
+    cpu.run_operation(0xB02D);
+
+    assert_eq!(cpu.program_counter, testval);
 }
