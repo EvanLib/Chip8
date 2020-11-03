@@ -5,7 +5,7 @@ const CHIP8_WIDTH: usize = 64;
 const CHIP8_HEIGHT: usize = 32;
 
 #[derive(Clone, Debug)]
-struct Display {
+pub struct Display {
     // vram
     pub vram: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
 
@@ -72,7 +72,7 @@ fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
     (r << 16) | (g << 8) | b
 }
 
-fn emulate() {
+pub fn emulate() {
     let window_width = CHIP8_WIDTH;
     let window_height = CHIP8_HEIGHT;
     let buffer_width = CHIP8_WIDTH;
